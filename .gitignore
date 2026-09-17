@@ -1,0 +1,23 @@
+# Entorno virtual de Python (Aislamiento de runtime)
+venv/
+.venv/
+env/
+
+# Archivos de caché y compilación de Python (Bytecode)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing y reportes de cobertura (Pytest)
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Variables de entorno y secretos (SEGURIDAD PROACTIVA: NUNCA SUBIR A GIT)
+.env
+*.env.local
+
+# Archivos de configuración del sistema operativo y editor
+.DS_Store
+.vscode/
+.idea/
