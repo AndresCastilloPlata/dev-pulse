@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+# Decodificador de direcciones: agrega la raiz del proyecto al bus sys.path
+pythonpath = ["."]
+testpaths = ["tests"]
