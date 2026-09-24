@@ -2,3 +2,5 @@
 # Decodificador de direcciones: agrega la raiz del proyecto al bus sys.path
 pythonpath = ["."]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
