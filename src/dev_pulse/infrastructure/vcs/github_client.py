@@ -1,45 +1,37 @@
 import httpx
+from typing import Dict, Any
 
+# 1. Importamos el chip con el nombre exacto del datasheet
 from src.dev_pulse.domain.interfaces.vcs_client import IVcsClient
+from src.dev_pulse.core.config import settings
 
+# 2. Heredamos de la interfaz correcta
 class GitHubApiClient(IVcsClient):
-    """Adaptador de infraestructura para comunicarse con la API REST de GitHub.
-
-    Analogia: Transceptor fisico de red que adapta las peticiones logicas
-    de la CPU a tramas HTTP/TCP hacia el exterior.
-    """
+    """Adaptador físico para comunicarse con la API de GitHub."""
     
-    def __init__(self, token: str, owner: str, repo: str) -> None:
-        """Configura los pines estaticos del transceptor.
-
-        Args:
-            token: Credencial de portador (Bearer token) para autenticacion.
-            owner: Propietario del repositorio (usuario u organizacion).
-            repo: Nombre del repositorio.
-        """
-        self._token = token
-        self._owner = owner
-        self._repo = repo
-        self._base_url = "https://api.github.com"
-
-    async def get_commit_diff(self, commit_sha: str) -> str:
-        """Ejecuta un ciclo de transmision/recepcion (TX/RX) para descargar el diff."""
-        url = f"{self._base_url}/repos/{self._owner}/{self._repo}/commits/{commit_sha}"
-        
-        headers = {
-            # Cabecera magica de GitHub para solicitar el archivo diff crudo
-            "Accept": "application/vnd.github.v3.diff",
-            "Authorization": f"Bearer {self._token}",
-            "X-GitHub-Api-Version": "2022-11-28",
+    def __init__(self):
+        token = settings.GITHUB_TOKEN
+        self.headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": f"Bearer {token}",
+            "X-GitHub-Api-Version": "2022-11-28"
         }
 
-        # El bloque 'async with' garantiza que el socket TCP se cierre al terminar
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers)
+    # 3. Usamos el nombre de método exacto que pide la interfaz
+    async def get_commit_diff(self, commit_sha: str, repo_full_name: str = "AndresCastilloPlata/dev-pulse") -> str:
+        """Descarga los cambios físicos (diff) de un commit."""
+        url = f"https://api.github.com/repos/{repo_full_name}/commits/{commit_sha}"
+        
+        async with httpx.AsyncClient(headers=self.headers) as client:
+            respuesta = await client.get(url)
+            respuesta.raise_for_status() 
             
-            # Detector de umbral: si el servidor retorna error (4xx o 5xx),
-            # dispara la excepcion HTTPStatusError (la que verificamos en el test).
-            response.raise_for_status()
+            datos = respuesta.json()
             
-            # Si todo esta OK (200), retorna la carga util decodificada en texto
-            return response.text
+            archivos_modificados = []
+            for archivo in datos.get("files", []):
+                nombre = archivo.get("filename")
+                parche = archivo.get("patch", "Sin cambios en texto (binario/imagen)")
+                archivos_modificados.append(f"--- Archivo: {nombre} ---\n{parche}")
+                
+            return "\n\n".join(archivos_modificados)

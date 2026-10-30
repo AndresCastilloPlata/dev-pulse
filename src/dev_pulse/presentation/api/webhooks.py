@@ -5,7 +5,9 @@ from fastapi import APIRouter, Request, Header, HTTPException, Depends
 from src.dev_pulse.core.config import Settings
 from src.dev_pulse.domain.entities.commit import Commit
 from src.dev_pulse.infrastructure.vcs.github_client import GitHubApiClient
-from src.dev_pulse.infrastructure.ai.openai_auditor import OpenAiCodeAuditor
+
+# 1. Eliminamos el import de OpenAI, dejamos exclusivamente el de Gemini
+from src.dev_pulse.infrastructure.ai.gemini_auditor import GeminiCodeAuditor
 from src.dev_pulse.application.use_cases.audit_commit import AuditCommitUseCase
 
 router = APIRouter()
@@ -56,12 +58,14 @@ async def github_webhook_receiver(
     propietario = repo_data.get("owner", {}).get("login", "")
     nombre_repo = repo_data.get("name", "")
     
-    # Nota técnica: Por ahora usamos un token vacío ("") porque para repositorios públicos
-    # GitHub permite descargar diffs sin token. Lo blindaremos más adelante.
-    vcs_client = GitHubApiClient(token="", owner=propietario, repo=nombre_repo)
-    ai_auditor = OpenAiCodeAuditor(api_key=settings.OPENAI_API_KEY, model=settings.OPENAI_MODEL)
+    vcs_client = GitHubApiClient()
+    
+    # EL CAMBIO CLAVE ESTÁ AQUÍ:
+    # Desoldamos OpenAiCodeAuditor y soldamos GeminiCodeAuditor. 
+    # Como el adaptador de Gemini se diseñó para tomar el token del PMIC interno, no le pasamos argumentos.
+    ai_auditor = GeminiCodeAuditor()
 
-    # 4. EJECUCION: Alimentar la CPU
+    # 4. EJECUCION: Alimentar la CPU (La Inversión de Dependencias en acción)
     use_case = AuditCommitUseCase(vcs_client=vcs_client, code_auditor=ai_auditor)
     reporte = await use_case.execute(commit_entity)
 
