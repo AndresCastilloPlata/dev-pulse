@@ -1,0 +1,22 @@
+# Entornos virtuales
+venv/
+env/
+.venv/
+
+# Secretos y variables locales (¡CRITICO!)
+.env
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Control de versiones
+.git/
+.gitignore
+
+# Caché de pruebas
+.pytest_cache/
+.coverage
+htmlcov/
