@@ -1,6 +1,6 @@
 import hmac
 import hashlib
-from fastapi import APIRouter, Request, Header, HTTPException, Depends
+from fastapi import APIRouter, Request, Header, HTTPException, Depends, BackgroundTasks
 
 from src.dev_pulse.core.config import Settings
 from src.dev_pulse.domain.entities.commit import Commit
@@ -18,6 +18,7 @@ def get_settings() -> Settings:
 @router.post("/github")
 async def github_webhook_receiver(
     request: Request,
+    background_tasks: BackgroundTasks,
     x_hub_signature_256: str | None = Header(default=None),
     settings: Settings = Depends(get_settings)
 ):
@@ -65,9 +66,12 @@ async def github_webhook_receiver(
     # Como el adaptador de Gemini se diseñó para tomar el token del PMIC interno, no le pasamos argumentos.
     ai_auditor = GeminiCodeAuditor()
 
-    # 4. EJECUCION: Alimentar la CPU (La Inversión de Dependencias en acción)
+        # 4. EJECUCION: Alimentar el Buffer Asíncrono
     use_case = AuditCommitUseCase(vcs_client=vcs_client, code_auditor=ai_auditor)
-    reporte = await use_case.execute(commit_entity)
 
-    # 5. SALIDA: FastAPI serializa automáticamente nuestro modelo Pydantic AuditReport a JSON
-    return reporte
+    # En lugar de usar 'await', lo empujamos a la cola de fondo
+    background_tasks.add_task(use_case.execute, commit_entity)
+
+    # 5. SALIDA: 200 OK Inmediato para evitar el Timeout de GitHub
+    return {"status": "processing", "message": "Auditoría enrutada al procesador asíncrono."}
+
